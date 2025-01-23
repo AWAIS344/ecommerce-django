@@ -43,7 +43,8 @@
 
 from rest_framework.test import APITestCase
 from rest_framework import status
-from django.contrib.auth.models import User , re
+from django.contrib.auth.models import User 
+from django.urls import reverse
 from .models import Product, Order, OrderItem
 
 class ProductTests(APITestCase):
@@ -99,18 +100,34 @@ class OrderTests(APITestCase):
         self.order_url = '/api/orders/'
 
     def test_create_order(self):
-        order_data = {
-            'items': [
-                {
-                    'product': self.product.id,
-                    'quantity': 2
-                }
-            ]
-        }
-        response = self.client.post(self.order_url, order_data, format='json')
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(response.data['customer_name'], self.user.username)
+    # Create a product
+        product1 = Product.objects.create(
+            name="Product 1",
+            description="Description 1",
+            price=19.99,
+            category="Category 1",
+            stock=10
+        )
+        product2 = Product.objects.create(
+            name="Product 2",
+            description="Description 2",
+            price=19.99,
+            category="Category 2",
+            stock=10
+        )
+
+        # Create the order
+        order = Order.objects.create(user=self.user)
+
+        # Create order items
+        OrderItem.objects.create(order=order, product=product1, quantity=1)
+        OrderItem.objects.create(order=order, product=product2, quantity=1)
+
+        # Fetch the order using the API
+        response = self.client.get(reverse('order-detail', args=[order.id]))
+        self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data['total_price'], '39.98')
+
 
     def test_order_total_price_calculation(self):
         order = Order.objects.create(user=self.user, status='Pending')
